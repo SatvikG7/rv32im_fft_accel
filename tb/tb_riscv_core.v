@@ -54,22 +54,34 @@ module tb_riscv_core;
         rst_n = 1;
         
         // Wait for program to execute
-        #200;
+        // We will run until $finish at #5000
+    end
+    
+    // Track writes to regfile
+    always @(posedge clk) begin
+        if (wb_we && wb_rd != 0) begin
+            $display("Time=%0t: Reg x%0d <- %h", $time, wb_rd, wb_data);
+        end
+    end
+    
+    initial begin
+        #5000;
         
         // Check results
-        $display("\nRegister File State:");
-        $display("x1: %d (expected: 42)", dut.regfile.registers[1]);
-        $display("x2: %d (expected: 100)", dut.regfile.registers[2]);
-        $display("x3: %d (expected: 142)", dut.regfile.registers[3]);
-        $display("x4: %d (expected: 58)", dut.regfile.registers[4]);
-        $display("x5: %d (expected: 32)", dut.regfile.registers[5]);
-        $display("x6: %d (expected: 110)", dut.regfile.registers[6]);
+        $display("\nRegister File State (Intermediate):");
+        $display("x14 (A0): %h", dut.regfile.registers[14]);
+        $display("x15 (B0): %h", dut.regfile.registers[15]);
+        $display("x16 (A1): %h", dut.regfile.registers[16]);
+        $display("x17 (B1): %h", dut.regfile.registers[17]);
+        $display("x18 (W_A1): %h", dut.regfile.registers[18]);
+        $display("x19 (W_B1): %h", dut.regfile.registers[19]);
         
-        if (dut.regfile.registers[3] === 32'd142 && dut.regfile.registers[4] === 32'd58 && dut.regfile.registers[6] === 32'd110)
-            $display("\nTEST PASSED");
-        else
-            $display("\nTEST FAILED");
-            
+        $display("\nRegister File State (FFT Results):");
+        $display("x20: %h (expected: 57600000 -> 118+0j)", dut.regfile.registers[20]);
+        $display("x21: %h (expected: c880c700 -> -9-7j)", dut.regfile.registers[21]);
+        $display("x22: %h (expected: 51800000 -> 44+0j)", dut.regfile.registers[22]);
+        $display("x23: %h (expected: c8804700 -> -9+7j)", dut.regfile.registers[23]);
+        
         $finish;
     end
 

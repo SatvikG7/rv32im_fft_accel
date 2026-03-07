@@ -81,16 +81,17 @@ module fft_accelerator (
         if (!rst_n) begin
             butterfly_start <= 1'b0;
             cmul_start <= 1'b0;
-            done <= 1'b0;
             busy <= 1'b0;
             result_latched <= 32'h0;
         end else begin
             if (start && !busy) begin
                 busy <= 1'b1;
-                done <= 1'b0;
                 
                 case (operation)
-                    3'b000: begin  // Butterfly operation
+                    3'b000: begin  // Butterfly operation (Add)
+                        butterfly_start <= 1'b1;
+                    end
+                    3'b010: begin  // Butterfly operation (Sub)
                         butterfly_start <= 1'b1;
                     end
                     3'b001: begin  // Complex multiply
@@ -106,25 +107,29 @@ module fft_accelerator (
                 cmul_start <= 1'b0;
             end
             
-            // Check for completion and latch result
+    // Check for completion and latch result
             if (butterfly_done) begin
-                result_latched <= {butterfly_out1_real, butterfly_out1_imag};
-                done <= 1'b1;
+                if (operation[1])
+                    result_latched <= {butterfly_out2_real, butterfly_out2_imag};
+                else
+                    result_latched <= {butterfly_out1_real, butterfly_out1_imag};
                 busy <= 1'b0;
             end else if (cmul_done) begin
                 result_latched <= {cmul_result_real, cmul_result_imag};
-                done <= 1'b1;
                 busy <= 1'b0;
-            end else if (done) begin
-                done <= 1'b0;
             end
         end
     end
     
     // Output result - combinational from latched value, with priority to fresh results
     always @(*) begin
+        done = butterfly_done || cmul_done;
+        
         if (butterfly_done) begin
-            result = {butterfly_out1_real, butterfly_out1_imag};
+            if (operation[1]) // operation == 3'b010 (sub)
+                result = {butterfly_out2_real, butterfly_out2_imag};
+            else              // operation == 3'b000 (add)
+                result = {butterfly_out1_real, butterfly_out1_imag};
         end else if (cmul_done) begin
             result = {cmul_result_real, cmul_result_imag};
         end else begin

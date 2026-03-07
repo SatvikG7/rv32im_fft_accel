@@ -61,6 +61,22 @@ module fp16_add (
     // Normalize result
     reg [4:0] exp_result;
     reg [9:0] mant_result;
+    reg [3:0] shift_amt;
+    reg [11:0] shifted_frac;
+    
+    always @(*) begin
+        if (frac_sum[9]) shift_amt = 4'd1;
+        else if (frac_sum[8]) shift_amt = 4'd2;
+        else if (frac_sum[7]) shift_amt = 4'd3;
+        else if (frac_sum[6]) shift_amt = 4'd4;
+        else if (frac_sum[5]) shift_amt = 4'd5;
+        else if (frac_sum[4]) shift_amt = 4'd6;
+        else if (frac_sum[3]) shift_amt = 4'd7;
+        else if (frac_sum[2]) shift_amt = 4'd8;
+        else if (frac_sum[1]) shift_amt = 4'd9;
+        else if (frac_sum[0]) shift_amt = 4'd10;
+        else shift_amt = 4'd0;
+    end
     
     always @(*) begin
         if (a_zero && b_zero) begin
@@ -83,10 +99,16 @@ module fp16_add (
             mant_result = frac_sum[9:0];
             result = {sign_result, exp_result, mant_result};
         end else begin
-            // Need to normalize left (simplified: shift by 1)
-            exp_result = exp_large - 1;
-            mant_result = frac_sum[9:0] << 1;
-            result = {sign_result, exp_result, mant_result};
+            // Need to normalize left dynamically
+            if (exp_large > shift_amt) begin
+                exp_result = exp_large - {1'b0, shift_amt};
+                shifted_frac = frac_sum << shift_amt;
+                mant_result = shifted_frac[9:0];
+                result = {sign_result, exp_result, mant_result};
+            end else begin
+                // Underflow to zero (simplified, ignoring denormals)
+                result = {sign_result, 15'h0000};
+            end
         end
     end
 
