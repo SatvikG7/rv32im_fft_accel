@@ -1,0 +1,54 @@
+
+firmware.elf:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00000000 <_start>:
+   0:	02a00093          	li	ra,42
+   4:	06400113          	li	sp,100
+   8:	002081b3          	add	gp,ra,sp
+   c:	40110233          	sub	tp,sp,ra
+  10:	0020f2b3          	and	t0,ra,sp
+  14:	0020e333          	or	t1,ra,sp
+  18:	04000393          	li	t2,64
+  1c:	0033a023          	sw	gp,0(t2)
+  20:	0003a403          	lw	s0,0(t2)
+  24:	00818463          	beq	gp,s0,2c <_branch_success>
+
+00000028 <_branch_fail>:
+  28:	0000006f          	j	28 <_branch_fail>
+
+0000002c <_branch_success>:
+  2c:	00000013          	nop
+  30:	00000013          	nop
+
+00000034 <_end>:
+  34:	0000006f          	j	34 <_end>
+
+Disassembly of section .data:
+
+00000040 <_test_data>:
+  40:	0000                	.insn	2, 0x
+	...
+
+Disassembly of section .riscv.attributes:
+
+00000000 <.riscv.attributes>:
+   0:	2741                	.insn	2, 0x2741
+   2:	0000                	.insn	2, 0x
+   4:	7200                	.insn	2, 0x7200
+   6:	7369                	.insn	2, 0x7369
+   8:	01007663          	bgeu	zero,a6,14 <_start+0x14>
+   c:	001d                	.insn	2, 0x001d
+   e:	0000                	.insn	2, 0x
+  10:	7205                	.insn	2, 0x7205
+  12:	3376                	.insn	2, 0x3376
+  14:	6932                	.insn	2, 0x6932
+  16:	7032                	.insn	2, 0x7032
+  18:	5f31                	.insn	2, 0x5f31
+  1a:	326d                	.insn	2, 0x326d
+  1c:	3070                	.insn	2, 0x3070
+  1e:	7a5f 6d6d 6c75      	.insn	6, 0x6c756d6d7a5f
+  24:	7031                	.insn	2, 0x7031
+  26:	0030                	.insn	2, 0x0030
