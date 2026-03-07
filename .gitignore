@@ -1,1 +1,13 @@
-build/synth.json
+build/
+
+*.vcd
+*.vvp
+
+sw/*.bin
+sw/*.elf
+sw/*.dump
+sw/*.hex
+
+*.log
+*.jou
+*.json
