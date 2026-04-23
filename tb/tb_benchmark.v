@@ -7,10 +7,10 @@ module tb_benchmark;
 
     reg clk;
     reg rst_n;
-    wire [31:0] ext_mem_addr;
-    wire [31:0] ext_mem_wdata;
-    wire ext_mem_we;
-    reg [31:0] ext_mem_rdata;
+    // wire [31:0] ext_mem_addr;
+    // wire [31:0] ext_mem_wdata;
+    // wire ext_mem_we;
+    // reg [31:0] ext_mem_rdata;
     
     // Cycle counter
     integer cycle_count;
@@ -19,11 +19,11 @@ module tb_benchmark;
     
     riscv_core dut (
         .clk(clk),
-        .rst_n(rst_n),
-        .ext_mem_addr(ext_mem_addr),
-        .ext_mem_wdata(ext_mem_wdata),
-        .ext_mem_we(ext_mem_we),
-        .ext_mem_rdata(ext_mem_rdata)
+        .rst_n(rst_n)
+        // .ext_mem_addr(ext_mem_addr),
+        // .ext_mem_wdata(ext_mem_wdata),
+        // .ext_mem_we(ext_mem_we),
+        // .ext_mem_rdata(ext_mem_rdata)
     );
     
     // Clock and cycle counter
@@ -78,7 +78,7 @@ module tb_benchmark;
     
     // Monitor for benchmark
     initial begin
-        $dumpfile("sim/tb_benchmark.vcd");
+        $dumpfile("build/tb_benchmark.vcd");
         $dumpvars(0, tb_benchmark);
         
         $display("=== FFT Performance Benchmark ===");

@@ -3,13 +3,13 @@
 
 module riscv_core (
     input wire clk,
-    input wire rst_n,
+    input wire rst_n
     
     // External memory interface (optional)
-    output wire [31:0] ext_mem_addr,
-    output wire [31:0] ext_mem_wdata,
-    output wire ext_mem_we,
-    input wire [31:0] ext_mem_rdata
+    // output wire [31:0] ext_mem_addr,
+    // output wire [31:0] ext_mem_wdata,
+    // output wire ext_mem_we,
+    // input wire [31:0] ext_mem_rdata
 );
 
     // Instruction memory interface
@@ -259,8 +259,8 @@ module riscv_core (
     assign flush_id = 1'b0;
     
     // External memory interface (unused in this design)
-    assign ext_mem_addr = 32'h0;
-    assign ext_mem_wdata = 32'h0;
-    assign ext_mem_we = 1'b0;
+    // assign ext_mem_addr = 32'h0;
+    // assign ext_mem_wdata = 32'h0;
+    // assign ext_mem_we = 1'b0;
 
 endmodule

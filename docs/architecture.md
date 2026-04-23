@@ -16,7 +16,7 @@ The processor core (`src/riscv_core.v`) is designed as a classic 5-stage pipelin
 3. **Execute Stage (`execute_stage.v`)**:
    - Contains the Arithmetic Logic Unit (ALU) (`alu.v`) for standard operations.
    - Performs branch condition checking and calculates branch targets.
-   - Interfaces closely with the FFT Accelerator to route operands for custom DSP instructions.
+   - Interfaces with the **FFT Accelerator** (`fft_accelerator.v`) which wraps the modular **FFT Engine** (`fft_engine.v`). Custom instructions (opcode `0x0B`) with `funct3` field are routed to the engine for SETN, LOAD, EXEC, and READ operations supporting N-point FFTs (N = 2, 4, 8, 16, 32, 64).
 4. **Memory Stage (`memory_stage.v`)**:
    - Interfaces with the Data Memory (`data_memory.v`).
    - Manages Load and Store instructions, passing non-memory results appropriately through a pipeline register.

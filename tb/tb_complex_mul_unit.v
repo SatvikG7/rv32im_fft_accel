@@ -39,7 +39,7 @@ module tb_complex_mul_unit;
     end
     
     initial begin
-        $dumpfile("sim/tb_complex_mul_unit.vcd");
+        $dumpfile("build/tb_complex_mul_unit.vcd");
         $dumpvars(0, tb_complex_mul_unit);
         
         $display("=== Complex Multiply Unit Standalone Test ===");

@@ -1,102 +1,163 @@
     .section .text.init
     .globl _start
 
-# Custom Macros for FFT ops
-.macro fft_add rd, rs1, rs2
-    .word (0x0B | (\rd << 7) | (0 << 12) | (\rs1 << 15) | (\rs2 << 20) | (0 << 25))
+# ===========================================================================
+# Custom FFT Instruction Macros (opcode = 0x0B)
+# ===========================================================================
+
+# FFT.SETN rd, rs1 — Set FFT size (funct3=000)
+# engine.N = rs1[6:0]
+.macro fft_setn rd, rs1
+    .word (0x0B | (\rd << 7) | (0 << 12) | (\rs1 << 15) | (0 << 20) | (0 << 25))
 .endm
 
-.macro fft_cmul rd, rs1, rs2
+# FFT.LOAD rd, rs1, rs2 — Load sample at index (funct3=001)
+# engine.buf[rs2[5:0]] = rs1 (packed {real[15:0], imag[15:0]})
+.macro fft_load rd, rs1, rs2
     .word (0x0B | (\rd << 7) | (1 << 12) | (\rs1 << 15) | (\rs2 << 20) | (0 << 25))
 .endm
 
-.macro fft_sub rd, rs1, rs2
-    .word (0x0B | (\rd << 7) | (2 << 12) | (\rs1 << 15) | (\rs2 << 20) | (0 << 25))
+# FFT.EXEC rd — Execute FFT computation (funct3=010)
+# Stalls pipeline until FFT is complete
+.macro fft_exec rd
+    .word (0x0B | (\rd << 7) | (2 << 12) | (0 << 15) | (0 << 20) | (0 << 25))
 .endm
 
+# FFT.READ rd, rs1 — Read FFT result at index (funct3=011)
+# rd = engine.buf[rs1[5:0]]
+.macro fft_read rd, rs1
+    .word (0x0B | (\rd << 7) | (3 << 12) | (\rs1 << 15) | (0 << 20) | (0 << 25))
+.endm
+
+# ===========================================================================
+# Program: 8-Point FFT Demonstration
+# Inputs: [1, 2, 3, 4, 5, 6, 7, 8] (real-only, imag=0)
+# Expected outputs (from fft_ref.py):
+#   X[0] = 36.0 + 0.0j    -> 0x50800000
+#   X[1] = -4.0 + 9.66j   -> 0xC40048D4
+#   X[2] = -4.0 + 4.0j    -> 0xC4004400
+#   X[3] = -4.0 + 1.66j   -> 0xC4003EA1
+#   X[4] = -4.0 + 0.0j    -> 0xC4000000
+#   X[5] = -4.0 - 1.66j   -> 0xC400BEA1
+#   X[6] = -4.0 - 4.0j    -> 0xC400C400
+#   X[7] = -4.0 - 9.66j   -> 0xC400C8D4
+# ===========================================================================
+
 _start:
-    # 1. Load inputs and twiddle factors using immediate loads (dmem is uninitialized initially)
-    li x10, 0x50800000  # x[0] = 36 + 0j
-    li x11, 0x4D800000  # x[1] = 22 + 0j
-    li x12, 0x51A00000  # x[2] = 45 + 0j
-    li x13, 0x4B800000  # x[3] = 15 + 0j
-    
-    li x5, 0x3C000000   # W_4_0 = 1 + 0j
-    li x6, 0x0000BC00   # W_4_1 = 0 - 1j
-
-    # Wait for memory load
+    # ------------------------------------------------------------------
+    # Step 1: Set FFT size to 8
+    # ------------------------------------------------------------------
+    li x1, 8
+    fft_setn 0, 1           # FFT.SETN x0, x1 (N=8, discard result)
     nop
     nop
     nop
 
-    # Stage 1: Butterfly
-    # A0 = x[0] + x[2]
-    fft_add 14, 10, 12
-    nop; nop; nop;
-    # B0 = x[0] - x[2]
-    fft_sub 15, 10, 12
-    nop; nop; nop;
-    # A1 = x[1] + x[3]
-    fft_add 16, 11, 13
-    nop; nop; nop;
-    # B1 = x[1] - x[3]
-    fft_sub 17, 11, 13
+    # ------------------------------------------------------------------
+    # Step 2: Load 8 input samples
+    # Each sample is packed as {real_fp16, imag_fp16} in a 32-bit register
+    # ------------------------------------------------------------------
+    # x[0] = 1.0 + 0j
+    li x10, 0x3C000000      # FP16: real=0x3C00 (1.0), imag=0x0000 (0.0)
+    li x2, 0
+    fft_load 0, 10, 2       # FFT.LOAD x0, x10, x2
+    nop; nop; nop
 
-    # NOPs to handle latency if any
-    nop
-    nop
-    nop
+    # x[1] = 2.0 + 0j
+    li x10, 0x40000000      # FP16: real=0x4000 (2.0), imag=0x0000
+    li x2, 1
+    fft_load 0, 10, 2
+    nop; nop; nop
 
-    # Stage 2: Multiply and Butterfly
-    # W_A1 = A1 * W_4_0
-    fft_cmul 18, 16, 5
-    nop; nop; nop;
+    # x[2] = 3.0 + 0j
+    li x10, 0x42000000      # FP16: real=0x4200 (3.0), imag=0x0000
+    li x2, 2
+    fft_load 0, 10, 2
+    nop; nop; nop
 
-    # X[0] = A0 + W_A1
-    fft_add 20, 14, 18
-    nop; nop; nop;
-    # X[2] = A0 - W_A1
-    fft_sub 22, 14, 18
-    nop; nop; nop;
+    # x[3] = 4.0 + 0j
+    li x10, 0x44000000      # FP16: real=0x4400 (4.0), imag=0x0000
+    li x2, 3
+    fft_load 0, 10, 2
+    nop; nop; nop
 
-    # W_B1 = B1 * W_4_1
-    fft_cmul 19, 17, 6
-    nop; nop; nop;
+    # x[4] = 5.0 + 0j
+    li x10, 0x45000000      # FP16: real=0x4500 (5.0), imag=0x0000
+    li x2, 4
+    fft_load 0, 10, 2
+    nop; nop; nop
 
-    # X[1] = B0 + W_B1
-    fft_add 21, 15, 19
-    nop; nop; nop;
-    # X[3] = B0 - W_B1
-    fft_sub 23, 15, 19
-    nop; nop; nop;
+    # x[5] = 6.0 + 0j
+    li x10, 0x46000000      # FP16: real=0x4600 (6.0), imag=0x0000
+    li x2, 5
+    fft_load 0, 10, 2
+    nop; nop; nop
 
-    nop
-    nop
-    nop
+    # x[6] = 7.0 + 0j
+    li x10, 0x47000000      # FP16: real=0x4700 (7.0), imag=0x0000
+    li x2, 6
+    fft_load 0, 10, 2
+    nop; nop; nop
 
-    # Store results back to memory
-    sw x20, 24(x1)  # X[0] = 118
-    sw x21, 28(x1)  # X[1] = -9 - 7j
-    sw x22, 32(x1)  # X[2] = 44
-    sw x23, 36(x1)  # X[3] = -9 + 7j
+    # x[7] = 8.0 + 0j
+    li x10, 0x48000000      # FP16: real=0x4800 (8.0), imag=0x0000
+    li x2, 7
+    fft_load 0, 10, 2
+    nop; nop; nop
+
+    # ------------------------------------------------------------------
+    # Step 3: Execute FFT (pipeline stalls until complete)
+    # ------------------------------------------------------------------
+    fft_exec 0               # FFT.EXEC x0
+    nop; nop; nop
+
+    # ------------------------------------------------------------------
+    # Step 4: Read results
+    # ------------------------------------------------------------------
+    li x2, 0
+    fft_read 20, 2           # X[0] -> x20
+    nop; nop; nop
+
+    li x2, 1
+    fft_read 21, 2           # X[1] -> x21
+    nop; nop; nop
+
+    li x2, 2
+    fft_read 22, 2           # X[2] -> x22
+    nop; nop; nop
+
+    li x2, 3
+    fft_read 23, 2           # X[3] -> x23
+    nop; nop; nop
+
+    li x2, 4
+    fft_read 24, 2           # X[4] -> x24
+    nop; nop; nop
+
+    li x2, 5
+    fft_read 25, 2           # X[5] -> x25
+    nop; nop; nop
+
+    li x2, 6
+    fft_read 26, 2           # X[6] -> x26
+    nop; nop; nop
+
+    li x2, 7
+    fft_read 27, 2           # X[7] -> x27
+    nop; nop; nop
+
+    # ------------------------------------------------------------------
+    # Step 5: Store results to memory for verification
+    # ------------------------------------------------------------------
+    li x3, 0                 # Base address for stores
+    sw x20, 0(x3)            # X[0]
+    sw x21, 4(x3)            # X[1]
+    sw x22, 8(x3)            # X[2]
+    sw x23, 12(x3)           # X[3]
+    sw x24, 16(x3)           # X[4]
+    sw x25, 20(x3)           # X[5]
+    sw x26, 24(x3)           # X[6]
+    sw x27, 28(x3)           # X[7]
 
 Infinite_Loop:
     j Infinite_Loop
-
-
-    .section .data
-    .align 4
-_data:
-    .word 0x50800000  # x[0]
-    .word 0x4D800000  # x[1]
-    .word 0x51A00000  # x[2]
-    .word 0x4B800000  # x[3]
-    .word 0x3C000000  # W_4^0 = 1 + 0j
-    .word 0x0000BC00  # W_4^1 = 0 - 1j
-    
-    # Space for Outputs X[0]..X[3]
-    .word 0x00000000
-    .word 0x00000000
-    .word 0x00000000
-    .word 0x00000000
-

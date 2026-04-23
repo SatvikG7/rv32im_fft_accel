@@ -11,3 +11,5 @@ sw/*.hex
 *.log
 *.jou
 *.json
+
+.agents/
